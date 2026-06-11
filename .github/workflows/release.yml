@@ -1,0 +1,83 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-release:
+    name: Build & Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: extract version and release notes from tag
+        id: version
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+          BODY=$(git tag -l --format='%(contents)' "$TAG" | sed '/^$/d')
+          if [ -z "$BODY" ]; then
+            BODY="Release $VERSION"
+          fi
+
+          {
+            echo "body<<RELEASE_NOTES_EOF"
+            echo "$BODY"
+            echo "RELEASE_NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: cross-compile
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          mkdir -p dist
+          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; do
+            GOOS="${target%/*}"
+            GOARCH="${target#*/}"
+            bin="coub-dl"
+            [ "$GOOS" = "windows" ] && bin="coub-dl.exe"
+            echo "building ${GOOS}/${GOARCH}"
+            CGO_ENABLED=0 GOOS="$GOOS" GOARCH="$GOARCH" \
+              go build -trimpath -ldflags "-s -w" -o "dist/${bin}" .
+            archive="coub-dl_${VERSION}_${GOOS}_${GOARCH}"
+            if [ "$GOOS" = "windows" ]; then
+              (cd dist && zip -q "${archive}.zip" "${bin}" && rm "${bin}")
+            else
+              (cd dist && tar -czf "${archive}.tar.gz" "${bin}" && rm "${bin}")
+            fi
+          done
+          ls -la dist
+
+      - name: create GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          body: ${{ steps.version.outputs.body }}
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+          make_latest: ${{ !contains(steps.version.outputs.version, '-') }}
+          files: |
+            dist/*

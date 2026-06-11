@@ -1,0 +1,49 @@
+[
+  {
+    "label": "Build",
+    "command": "go build -o coub-dl .",
+    "cwd": "$ZED_WORKTREE_ROOT"
+  },
+  {
+    "label": "Test All",
+    "command": "go test ./...",
+    "cwd": "$ZED_WORKTREE_ROOT"
+  },
+  {
+    "label": "Test with Race",
+    "command": "go test -race -count=1 ./...",
+    "cwd": "$ZED_WORKTREE_ROOT"
+  },
+  {
+    "label": "Test Current Package",
+    "command": "go test -v .",
+    "cwd": "$ZED_DIRNAME"
+  },
+  {
+    "label": "Vet",
+    "command": "go vet ./...",
+    "cwd": "$ZED_WORKTREE_ROOT"
+  },
+  {
+    "label": "Lint",
+    "command": "golangci-lint run",
+    "cwd": "$ZED_WORKTREE_ROOT"
+  },
+  {
+    "label": "Coverage Report (HTML)",
+    "command": "go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out -o coverage.html && echo 'report written to coverage.html'",
+    "cwd": "$ZED_WORKTREE_ROOT"
+  },
+  {
+    "label": "Run: download (sample)",
+    "command": "go run . download 2uywin",
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "use_new_terminal": true
+  },
+  {
+    "label": "Run: sync",
+    "command": "go run . sync",
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "use_new_terminal": true
+  }
+]
