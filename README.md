@@ -1,94 +1,106 @@
-# COUB Download Liked Videos
+# coub-dl
 
-Download your liked videos from coub.com.
+<div align="center">
+    <img src=./logo.png width=400 />
+</div>
 
-This program downloads mp3 and mp4 files and combines them together using `ffmpeg`. All videos will be looped to the length of the audio file. Pages with information about your liked videos will be saved to a JSON dump (`likes.json`). Any future runs will use that instead of the API. In case of multiple sequential runs, it doesn't re-download already downloaded videos; comparison is based on filenames only.
+[![build](https://github.com/EvaTheSalmon/coub-dl/actions/workflows/ci.yml/badge.svg)](https://github.com/EvaTheSalmon/coub-dl/actions/workflows/ci.yml)
+[![Coverage Status](https://coveralls.io/repos/github/EvaTheSalmon/coub-dl/badge.svg?branch=master)](https://coveralls.io/github/EvaTheSalmon/coub-dl?branch=master)
+[![Go Report Card](https://goreportcard.com/badge/github.com/EvaTheSalmon/coub-dl)](https://goreportcard.com/report/github.com/EvaTheSalmon/coub-dl)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## Features
+A small command-line tool to download videos from [coub.com](https://coub.com).
 
-- Downloads and combines video and audio files.
-- Loops videos to match the length of the audio.
-- Saves liked videos information to `likes.json`.
-- Avoids re-downloading already downloaded videos.
+A coub is a short looping video with a separate, usually longer, audio track.
+`coub-dl` fetches both streams, loops the video to match the audio length, and
+muxes them into a single portable `.mp4`. It copies Coub's existing video and
+audio streams (typically H.264 and MP3) without re-encoding, and embeds the
+title, author, tags, and source link as metadata. Already-downloaded files are
+skipped.
 
-## Prerequisites
+## Requirements
 
-- Python 3.x
-- `ffmpeg` installed and accessible from the command line.
+- [Go 1.26+](https://go.dev/dl/) to build
+- [`ffmpeg`](https://ffmpeg.org/) available in `PATH`
 
-## Installation
+## Install
 
-1. Clone the repository:
+Prebuilt binaries for Linux, macOS, and Windows are attached to each
+[release](https://github.com/EvaTheSalmon/coub-dl/releases). Or install with Go:
 
-```bash
-git clone https://github.com/yourusername/coub-dl-liked.git
-cd coub-dl-liked
+```sh
+go install github.com/EvaTheSalmon/coub-dl@latest
 ```
 
-2. Install dependencies:
+Or build from source:
 
-```bash
-pip install -r requirements.txt
-```
-
-3. Obtain your API token:
-   - Login to [coub.com](https://coub.com).
-   - Open the source of the main page: `view-source:https://coub.com/hot`.
-   - Search for `api_token` using `Ctrl+F`. The API token is a 128-character long sequence.
-   - Copy the API token and place it in a `.env` file in the project directory as follows:
-
-```
-API_TOKEN=your_api_token_here
+```sh
+git clone https://github.com/EvaTheSalmon/coub-dl
+cd coub-dl
+go build -o coub-dl .
 ```
 
 ## Usage
 
-### Windows
+### Download a single coub
 
-1. Open Command Prompt and navigate to the project directory:
-
-```cmd
-cd coub-dl-liked
+```sh
+coub-dl download [-out dir] [-name file] <link|permalink>
 ```
 
-2. (Optional) Set video and audio quality preference:
-
-```cmd
-set VIDEO_QUALITY=high
-set AUDIO_QUALITY=high
+```sh
+coub-dl download https://coub.com/view/2uywin   # -> ./2uywin.mp4
+coub-dl download -out clips 2uywin              # -> clips/2uywin.mp4
+coub-dl download -name funny-cat 2uywin         # -> ./funny-cat.mp4
 ```
 
-Available values for `VIDEO_QUALITY`: `higher`, `high`, `med`. Default is `high`.
-Available values for `AUDIO_QUALITY`: `high`, `med`. Default is `high`.
+No token is needed — single coubs are public. The output path is printed to
+stdout; everything else goes to stderr.
 
-3. Run the script:
+### Sync all your liked coubs
 
-```cmd
-python .\download_liked_coubs.py
+```sh
+coub-dl sync [-out dir] [-workers n]
 ```
 
-### Linux & macOS
-
-1. Open Terminal and navigate to the project directory:
-
-```bash
-cd coub-dl-liked
+```sh
+export API_TOKEN=your_token
+coub-dl sync                    # -> videos/YYYY/MM/<id>.mp4
+coub-dl sync -out archive -workers 10
 ```
 
-2. (Optional) Set video and audio quality preference and run the script:
+`sync` streams your likes page by page and downloads them concurrently
+(5 workers by default), laying files out by month. It is idempotent: re-running
+it re-downloads only what failed or is missing, so a second run is a free retry.
 
-```bash
-VIDEO_QUALITY=high AUDIO_QUALITY=high python ./download_liked_coubs.py
+> **Note:** flags must come before the positional link
+> (`coub-dl download -out clips 2uywin`, not `coub-dl download 2uywin -out clips`).
+
+### Getting an API token
+
+1. Log in to [coub.com](https://coub.com).
+2. Open the page source of any page (`Ctrl+U`) and search for `api_token`.
+3. Copy the 128-character value into the `API_TOKEN` environment variable.
+
+## Flags
+
+| Flag       | Commands           | Default        | Description                          |
+| ---------- | ------------------ | -------------- | ------------------------------------ |
+| `-out`     | `download`, `sync` | `.` / `videos` | output directory                     |
+| `-name`    | `download`         | coub id        | output file name (without extension) |
+| `-workers` | `sync`             | `5`            | concurrent downloads                 |
+
+## Exit codes
+
+`0` success · `1` a download or fetch failed · `64` bad usage / missing token.
+
+## Tests
+
+```sh
+go test ./...          # full suite
+go test -short ./...   # skips the slow retry-backoff test
 ```
-
-## Output
-
-All video loops will be downloaded to the `videos` directory, organized by year and month.
-
-### Disk Usage Estimation
-
-- 1000 higher quality videos will require approximately 38 GB of disk space.
 
 ## License
 
-This project is licensed under the MIT License.
+[MIT](LICENSE)

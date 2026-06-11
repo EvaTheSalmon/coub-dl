@@ -1,5 +1,22 @@
-*.log
-videos/*
-*.json
-venv
+# binary
+coub-dl
+coub-dl.exe
+
+
+# output
+videos/
+logs/
+likes.json
+coverage.out
+dist/
+
+# env
 .env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# AI
+.claude
