@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -100,13 +101,15 @@ func cmdSync(ctx context.Context, args []string) int {
 	s := &syncer{client: client, outDir: *outDir, workers: *workers, total: total}
 	res := s.run(ctx, coubs)
 
+	err = <-errCh
+	if err != nil && !errors.Is(err, context.Canceled) {
+		fmt.Fprintln(os.Stderr, "error:", err)
+		return 1
+	}
+
 	if ctx.Err() != nil {
 		reportResult(res, true)
 		return 130
-	}
-	if err := <-errCh; err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
-		return 1
 	}
 
 	reportResult(res, false)
