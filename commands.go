@@ -156,6 +156,7 @@ func (s *syncer) run(ctx context.Context, coubs <-chan coub.Coub) syncResult {
 	go func() { tally <- report(results, s.total) }()
 
 	seen := make(map[string]bool)
+dispatch:
 	for cb := range coubs {
 		if seen[cb.Permalink] {
 			continue
@@ -164,7 +165,7 @@ func (s *syncer) run(ctx context.Context, coubs <-chan coub.Coub) syncResult {
 
 		select {
 		case <-ctx.Done():
-			continue
+			break dispatch
 		case sem <- struct{}{}:
 		}
 
