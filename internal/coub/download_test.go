@@ -3,6 +3,7 @@ package coub
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -136,5 +137,24 @@ func TestDownloadNoVideoURL(t *testing.T) {
 	entries, _ := os.ReadDir(dir)
 	if len(entries) != 0 {
 		t.Errorf("Download wrote %d file(s), want none", len(entries))
+	}
+}
+
+func TestDownloadSkipsExisting(t *testing.T) {
+	dir := t.TempDir()
+	out := filepath.Join(dir, "test1.mp4")
+	if err := os.WriteFile(out, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	path, skipped, err := (&Client{}).Download(context.Background(), Coub{Permalink: "test1"}, dir, "")
+	if err != nil {
+		t.Fatalf("Download returned error: %v", err)
+	}
+	if !skipped {
+		t.Error("skipped = false, want true")
+	}
+	if path != out {
+		t.Errorf("path = %q, want %q", path, out)
 	}
 }
