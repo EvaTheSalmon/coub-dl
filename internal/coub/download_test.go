@@ -1,6 +1,11 @@
 package coub
 
-import "testing"
+import (
+	"context"
+	"os"
+	"strings"
+	"testing"
+)
 
 func TestBestURL(t *testing.T) {
 	cases := []struct {
@@ -74,6 +79,38 @@ func TestUserNameSafe(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			if got := userNameSafe(c.in); got != c.want {
 				t.Errorf("userNameSafe(%q) = %v, want %v", c.in, got, c.want)
+			}
+		})
+	}
+}
+
+func TestDownloadRejectsUnsafeNames(t *testing.T) {
+	cases := []struct {
+		label     string
+		permalink string
+		name      string
+		wantErr   string
+	}{
+		{"unsafe permalink", "../evil", "", "unsafe permalink"},
+		{"unsafe -name", "good", "../evil", "unsafe -name"},
+		{"leading dash permalink", "-x", "", "unsafe permalink"},
+		{"slash in -name", "good", "sub/clip", "unsafe -name"},
+	}
+	for _, c := range cases {
+		t.Run(c.label, func(t *testing.T) {
+			client := &Client{}
+			dir := t.TempDir()
+			coub := Coub{Permalink: c.permalink}
+
+			_, _, err := client.Download(context.Background(), coub, dir, c.name)
+			if err == nil {
+				t.Fatalf("Download(permalink=%q, name=%q) = nil error, want %q", c.permalink, c.name, c.wantErr)
+			}
+			if !strings.Contains(err.Error(), c.wantErr) {
+				t.Errorf("error = %q, want it to contain %q", err, c.wantErr)
+			}
+			if entries, _ := os.ReadDir(dir); len(entries) != 0 {
+				t.Errorf("Download wrote %d file(s), want none", len(entries))
 			}
 		})
 	}

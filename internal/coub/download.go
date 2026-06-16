@@ -14,11 +14,13 @@ func (c *Client) Download(ctx context.Context, coub Coub, destDir, name string) 
 	filename := coub.Permalink
 	if name != "" {
 		filename = strings.TrimSuffix(name, ".mp4")
-		if !userNameSafe(filename) {
-			return "", false, fmt.Errorf("unsafe -name %q", filename)
-		}
-	} else if !filenameSafe(filename) {
+	}
+
+	if name == "" && !filenameSafe(filename) {
 		return "", false, fmt.Errorf("unsafe permalink %q", filename)
+	}
+	if name != "" && !userNameSafe(filename) {
+		return "", false, fmt.Errorf("unsafe -name %q", filename)
 	}
 
 	out := filepath.Join(destDir, filename+".mp4")
