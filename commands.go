@@ -102,7 +102,7 @@ func cmdSync(ctx context.Context, args []string) int {
 
 	if ctx.Err() != nil {
 		reportResult(res, true)
-		return 0
+		return 130
 	}
 	if err := <-errCh; err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
