@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -13,6 +14,11 @@ func (c *Client) Download(ctx context.Context, coub Coub, destDir, name string) 
 	filename := coub.Permalink
 	if name != "" {
 		filename = strings.TrimSuffix(name, ".mp4")
+		if !userNameSafe(filename) {
+			return "", false, fmt.Errorf("unsafe -name %q", filename)
+		}
+	} else if !filenameSafe(filename) {
+		return "", false, fmt.Errorf("unsafe permalink %q", filename)
 	}
 
 	out := filepath.Join(destDir, filename+".mp4")
@@ -31,8 +37,8 @@ func (c *Client) Download(ctx context.Context, coub Coub, destDir, name string) 
 	audio := coub.FileVersions.HTML5.Audio
 	audioURL := bestURL([]MediaVariant{audio.High, audio.Med})
 
-	tmpVideo := filepath.Join(destDir, coub.Permalink+"_tmp_video.mp4")
-	tmpAudio := filepath.Join(destDir, coub.Permalink+"_tmp_audio.mp3")
+	tmpVideo := filepath.Join(destDir, filename+"_tmp_video.mp4")
+	tmpAudio := filepath.Join(destDir, filename+"_tmp_audio.mp3")
 	defer os.Remove(tmpVideo)
 	defer os.Remove(tmpAudio)
 
@@ -92,4 +98,17 @@ func buildComment(coub Coub) string {
 
 	return fmt.Sprintf("Author: %s\nLink: https://coub.com/view/%s\nTags: %s",
 		coub.Channel.Title, coub.Permalink, strings.Join(titles, ";"))
+}
+
+var permalinkPattern = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_-]*$`)
+
+func filenameSafe(filename string) bool {
+	return permalinkPattern.MatchString(filename)
+}
+
+func userNameSafe(name string) bool {
+	return name != "" &&
+		!strings.HasPrefix(name, "-") &&
+		!strings.ContainsAny(name, `/\`) &&
+		filepath.IsLocal(name)
 }
