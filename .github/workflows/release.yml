@@ -32,7 +32,7 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-          BODY=$(git tag -l --format='%(contents)' "$TAG" | sed '/^$/d')
+          BODY=$(git tag -l --format='%(contents)' "$TAG")
           if [ -z "$BODY" ]; then
             BODY="Release $VERSION"
           fi
