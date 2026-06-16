@@ -10,18 +10,38 @@ import (
 )
 
 func TestBackoff(t *testing.T) {
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		base := time.Duration(1<<(attempt-1)) * time.Second
+		low, high := base/2, base*3/2
+		for range 1000 {
+			d := backoff(attempt)
+			if d < low || d >= high {
+				t.Fatalf("backoff(%d) = %v, want within [%v, %v)", attempt, d, low, high)
+			}
+		}
+	}
+}
+
+func TestParseRetryAfter(t *testing.T) {
 	cases := []struct {
-		attempt int
-		want    time.Duration
+		name string
+		in   string
+		want time.Duration
 	}{
-		{1, 1 * time.Second},
-		{2, 2 * time.Second},
-		{3, 4 * time.Second},
+		{"empty", "", 0},
+		{"zero seconds", "0", 0},
+		{"positive seconds", "5", 5 * time.Second},
+		{"large seconds", "120", 120 * time.Second},
+		{"negative seconds", "-3", 0},
+		{"garbage", "soon", 0},
+		{"past http date", "Mon, 02 Jan 2006 15:04:05 GMT", 0},
 	}
 	for _, c := range cases {
-		if got := backoff(c.attempt); got != c.want {
-			t.Errorf("backoff(%d) = %v, want %v", c.attempt, got, c.want)
-		}
+		t.Run(c.name, func(t *testing.T) {
+			if got := parseRetryAfter(c.in); got != c.want {
+				t.Errorf("parseRetryAfter(%q) = %v, want %v", c.in, got, c.want)
+			}
+		})
 	}
 }
 
