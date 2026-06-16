@@ -2,8 +2,10 @@ package coub
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -25,8 +27,11 @@ func (c *Client) Download(ctx context.Context, coub Coub, destDir, name string) 
 
 	out := filepath.Join(destDir, filename+".mp4")
 
-	if _, err := os.Stat(out); err == nil {
+	switch _, err := os.Stat(out); {
+	case err == nil:
 		return out, true, nil
+	case !errors.Is(err, fs.ErrNotExist):
+		return "", false, fmt.Errorf("checking output: %w", err)
 	}
 
 	if err := os.MkdirAll(destDir, 0o755); err != nil {
@@ -53,7 +58,7 @@ func (c *Client) Download(ctx context.Context, coub Coub, destDir, name string) 
 	}
 
 	if audioURL == "" {
-		return out, false, os.Rename(tmpVideo, out)
+		return out, false, finalize(tmpVideo, out)
 	}
 
 	if err := c.downloadToFile(ctx, audioURL, tmpAudio); err != nil {
@@ -66,6 +71,13 @@ func (c *Client) Download(ctx context.Context, coub Coub, destDir, name string) 
 	}
 
 	return out, false, nil
+}
+
+func finalize(tmpVideo, out string) error {
+	if err := os.Rename(tmpVideo, out); err != nil {
+		return fmt.Errorf("finalizing video: %w", err)
+	}
+	return nil
 }
 
 func bestURL(variants []MediaVariant) string {
