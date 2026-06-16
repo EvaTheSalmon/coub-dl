@@ -1,0 +1,29 @@
+# vcs / ci / tooling
+.git
+.gitignore
+.github
+.claude
+
+# docs and assets not needed to build
+docs
+README.md
+LICENSE
+logo.png
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# tests are not needed for the build
+*_test.go
+
+# build artifacts and output
+coub-dl
+coub-dl.exe
+dist
+videos
+logs
+likes.json
+coverage.out
+*.mp4
+*.swp
+.env
