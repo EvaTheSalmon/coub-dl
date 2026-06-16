@@ -47,19 +47,37 @@ proposal — do not make the user write from scratch.
 git log --oneline $(git describe --tags --abbrev=0 2>/dev/null)..HEAD 2>/dev/null || git log --oneline -10
 ```
 
-Three quirks to honor (all learned the hard way on v1.0.0):
+### Format
+
+- **No emoji.**
+- Group by conventional-commit type with `##` sections separated by blank lines
+  (`## Features`, `## Performance`, `## Fixes`; add others as needed).
+- Each line mirrors its commit: `type(scope) - description #PR`.
+- End with `**Full Changelog**: https://github.com/EvaTheSalmon/coub-dl/compare/<prev>...<version>`.
+- Exclude behaviour-neutral commits (refactor, chore, docs) unless notable.
+
+Example:
+
+```
+## Features
+- feat(docker) - multi-stage image, docker-compose, and scheduling docs #24
+
+## Fixes
+- fix(sync) - return 130 on interrupt instead of 0 #20
+
+**Full Changelog**: https://github.com/EvaTheSalmon/coub-dl/compare/v1.0.0...v1.1.0
+```
+
+Two quirks to honor:
 
 1. **`git tag` strips lines starting with `#` by default** — its default cleanup mode is
-   `strip`, which treats `#` lines as comments and removes them, so markdown `##` headings
-   vanish. ALWAYS tag with `--cleanup=whitespace` (Step 4).
-2. **`release.yml` pipes the body through `sed '/^$/d'`**, deleting every blank line. Even
-   with headings preserved, section spacing collapses. `##` headings and bullet lists still
-   render (they interrupt paragraphs in GitHub markdown), but consecutive prose paragraphs
-   merge. So draft with `##` sections + bullet lists, avoid multi-paragraph prose, and do
-   not end a section on prose that follows a list. The real fix is removing that `sed` from
-   the workflow.
-3. **Do not repeat the version as the first body line** — the workflow sets the release
-   `name:` to the tag (e.g. `v1.0.0`), so the page heading already shows it.
+   `strip`, which removes `#` lines as comments, so markdown `##` headings vanish. ALWAYS tag
+   with `--cleanup=whitespace` (Step 4).
+2. **Do not repeat the version as the first body line** — the workflow sets the release
+   `name:` to the tag (e.g. `v1.1.0`), so the page heading already shows it.
+
+`release.yml` preserves blank lines (the old `sed '/^$/d'` was removed), so format the tag
+normally — `##` sections with blank-line spacing render as written.
 
 ## Step 4: Get approval and execute
 
