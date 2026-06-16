@@ -10,11 +10,12 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/EvaTheSalmon/coub-dl/internal/coub"
 )
 
-func cmdDownload(ctx context.Context, hc *http.Client, args []string) int {
+func cmdDownload(ctx context.Context, args []string) int {
 	fs := flag.NewFlagSet("download", flag.ContinueOnError)
 	destDir := fs.String("out", ".", "output directory")
 	name := fs.String("name", "", "output file name (without extension; defaults to the coub id)")
@@ -39,6 +40,7 @@ func cmdDownload(ctx context.Context, hc *http.Client, args []string) int {
 		return 1
 	}
 
+	hc := &http.Client{Timeout: 60 * time.Second}
 	client := coub.NewClient(hc, "")
 
 	cb, err := client.Get(ctx, permalink)
@@ -57,7 +59,7 @@ func cmdDownload(ctx context.Context, hc *http.Client, args []string) int {
 	return 0
 }
 
-func cmdSync(ctx context.Context, hc *http.Client, args []string) int {
+func cmdSync(ctx context.Context, args []string) int {
 	token := os.Getenv("API_TOKEN")
 	if token == "" {
 		fmt.Fprintln(os.Stderr, "API_TOKEN is not set")
@@ -78,6 +80,11 @@ func cmdSync(ctx context.Context, hc *http.Client, args []string) int {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
+
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.MaxIdleConns = 100
+	transport.MaxIdleConnsPerHost = max(*workers*2, 10)
+	hc := &http.Client{Transport: transport, Timeout: 60 * time.Second}
 
 	client := coub.NewClient(hc, token)
 
