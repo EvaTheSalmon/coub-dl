@@ -28,7 +28,7 @@ stdlib `flag` requires flags **before** the positional link
 Two layers:
 
 - **`package main`** (root: `main.go`, `commands.go`) — CLI: arg parsing,
-  subcommand dispatch, exit codes (`0`/`1`/`64`), and the `sync` worker pool.
+  subcommand dispatch, exit codes (`0`/`1`/`64`/`130`), and the `sync` worker pool.
 - **`internal/coub`** — the domain: API client plus the download/mux pipeline.
 
 Key flows that span files:
@@ -36,8 +36,8 @@ Key flows that span files:
 - **`Client`** (`internal/coub/client.go`) holds the `*http.Client` + token and
   exposes `Get`, `FetchLikes`, `LikesCount`, `Download`. Every HTTP call funnels
   through `doGet` in `retry.go`, which retries transient failures (network, 429,
-  5xx) with ctx-aware exponential backoff. `ctx` is always a per-call parameter,
-  never a struct field.
+  5xx) with ctx-aware exponential backoff — jittered, and honoring a `Retry-After`
+  header when present. `ctx` is always a per-call parameter, never a struct field.
 - **`FetchLikes`** is a producer goroutine streaming coubs over a buffered
   channel, with a second channel for a single error.
 - **`sync`** (`commands.go`): `syncer.run` consumes that channel through a
@@ -53,9 +53,10 @@ Key flows that span files:
 
 - **stdlib-only** — no third-party deps (rejected go-flags, lgr). No interfaces;
   every type has one implementation.
-- **Output name = `<permalink>.mp4`**, no sanitization. Title/tags/author go into
-  the mp4 metadata, not the filename. `sync` lays files out as `outDir/YYYY/MM/`;
-  `download` is flat.
+- **Output name = `<permalink>.mp4`** — used as-is, not sanitized; but unsafe
+  permalinks or `-name` values (`..`, path separators, a leading `-`) are
+  rejected, not cleaned. Title/tags/author go into the mp4 metadata, not the
+  filename. `sync` lays files out as `outDir/YYYY/MM/`; `download` is flat.
 - **Single ffmpeg pass with `-c copy`** (no transcode) for portability. Large
   output is the looped video baked to the audio length — by design, not a bug.
 - Errors are values (no sentinels). `ffmpeg` is required at runtime and checked
