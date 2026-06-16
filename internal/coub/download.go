@@ -36,6 +36,10 @@ func (c *Client) Download(ctx context.Context, coub Coub, destDir, name string) 
 	video := coub.FileVersions.HTML5.Video
 	videoURL := bestURL([]MediaVariant{video.Higher, video.High, video.Med})
 
+	if videoURL == "" {
+		return "", false, fmt.Errorf("no downloadable video for %s", coub.Permalink)
+	}
+
 	audio := coub.FileVersions.HTML5.Audio
 	audioURL := bestURL([]MediaVariant{audio.High, audio.Med})
 

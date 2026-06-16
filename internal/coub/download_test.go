@@ -115,3 +115,26 @@ func TestDownloadRejectsUnsafeNames(t *testing.T) {
 		})
 	}
 }
+
+func TestDownloadNoVideoURL(t *testing.T) {
+	client := &Client{}
+	dir := t.TempDir()
+
+	coub := Coub{Permalink: "test1"}
+
+	_, skipped, err := client.Download(context.Background(), coub, dir, "")
+	if err == nil {
+		t.Fatal("Download returned nil error for a coub with no video URL")
+	}
+	if !strings.Contains(err.Error(), "no downloadable video") {
+		t.Errorf("error = %q, want it to mention the missing video", err)
+	}
+	if skipped {
+		t.Error("skipped = true, want false")
+	}
+
+	entries, _ := os.ReadDir(dir)
+	if len(entries) != 0 {
+		t.Errorf("Download wrote %d file(s), want none", len(entries))
+	}
+}
