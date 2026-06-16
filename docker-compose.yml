@@ -1,0 +1,40 @@
+services:
+  coub-dl:
+    build: .
+    image: coub-dl
+    environment:
+      API_TOKEN: ${API_TOKEN:?set API_TOKEN in the environment or a .env file}
+    volumes:
+      - ./videos:/data/videos
+    command: ["sync", "-out", "/data/videos"]
+    restart: "no"
+    init: true
+
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - "no-new-privileges:true"
+
+    mem_limit: 512m
+    pids_limit: 256
+    cpus: 2.0
+
+    # The image runs as a non-root user (uid 1000). If the mounted host
+    # directory is owned by a different uid, uncomment and match your user:
+    # user: "1000:1000"
+
+  # Optional compose-only cron: an ofelia sidecar that runs the sync on a
+  # schedule, so you do not need a host crontab. This is a starting sketch —
+  # see https://github.com/mcuadros/ofelia for the full label reference.
+  # scheduler:
+  #   image: mcuadros/ofelia:latest
+  #   command: daemon --docker
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #   labels:
+  #     ofelia.job-run.coub-sync.schedule: "@every 24h"
+  #     ofelia.job-run.coub-sync.image: "coub-dl"
+  #     ofelia.job-run.coub-sync.command: "sync -out /data/videos"

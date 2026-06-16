@@ -82,6 +82,46 @@ it re-downloads only what failed or is missing, so a second run is a free retry.
 2. Open the page source of any page (`Ctrl+U`) and search for `api_token`.
 3. Copy the 128-character value into the `API_TOKEN` environment variable.
 
+## Docker
+
+Run `coub-dl` without a local Go toolchain or `ffmpeg` install. The image bundles
+`ffmpeg` and CA certificates and runs as a non-root user; both subcommands work.
+
+```sh
+docker build -t coub-dl .
+docker run --rm -v "$PWD:/data" coub-dl download 2uywin -out /data
+docker run --rm -e API_TOKEN=xxx -v "$PWD/videos:/data/videos" coub-dl sync -out /data/videos
+```
+
+The container runs as uid 1000, so downloaded files are owned by that uid. Pass
+`--user "$(id -u):$(id -g)"` to own them as the host user instead (the mounted
+directory must then be writable by that uid).
+
+### Compose
+
+`docker-compose.yml` defines a one-shot `sync` service:
+
+```sh
+export API_TOKEN=xxx
+docker compose run --rm coub-dl
+```
+
+It builds the image, reads `API_TOKEN` from the environment, mounts `./videos`
+to `/data/videos`, and exits when the sync completes.
+
+### Scheduling
+
+Keep the container a one-shot batch job and drive the schedule from outside it.
+The simplest option is a host crontab entry:
+
+```cron
+0 3 * * *  cd /path/to/coub-dl && API_TOKEN=xxx docker compose run --rm coub-dl
+```
+
+`sync` exits non-zero if interrupted (`130`) or on error (`1`), so a wrapper can
+tell an aborted run from a clean one. A commented `ofelia` sidecar in
+`docker-compose.yml` shows a compose-only alternative.
+
 ## Flags
 
 | Flag       | Commands           | Default        | Description                          |
@@ -92,7 +132,8 @@ it re-downloads only what failed or is missing, so a second run is a free retry.
 
 ## Exit codes
 
-`0` success · `1` a download or fetch failed · `64` bad usage / missing token.
+`0` success · `1` a download or fetch failed · `64` bad usage / missing token ·
+`130` interrupted (Ctrl-C / SIGTERM).
 
 ## Tests
 
